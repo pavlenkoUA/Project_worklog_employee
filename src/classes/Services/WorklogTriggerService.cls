@@ -19,7 +19,7 @@ public with sharing class WorklogTriggerService {
     }
 
     public static void setBillableHours(List<Worklog__c> newList) {
-        for (Worklog__c worklog_i :newList) {
+        for (Worklog__c worklog_i : newList) {
             if (worklog_i.Billable_hours__c == null) {
                 worklog_i.Billable_hours__c = worklog_i.Actual_hours__c;
             }
@@ -27,7 +27,7 @@ public with sharing class WorklogTriggerService {
     }
 
     public static void validateBillableHoursToDate(List<Worklog__c> newList) {
-        for (Worklog__c worklog_i :newList) {
+        for (Worklog__c worklog_i : newList) {
             if (worklog_i.Date__c != Date.today()) {
                 worklog_i.addError(Label.Prevent_billable_hours_change_on_Worklog_from_the_past);
             }
@@ -35,10 +35,9 @@ public with sharing class WorklogTriggerService {
     }
 //
     public static void rollUpTotalHoursToProject(List<Worklog__c> newList, Map<Id, Worklog__c> oldMap) {
-        List<Project__c> projectsToUpdate = new List<Project__c>();
         Set<Id> projectIdSet = new Set<Id>();
 
-        List<Project__c> worklogToProcessList = (!Trigger.isDelete)
+        List<Worklog__c> worklogToProcessList = (!Trigger.isDelete)
                 ? newList
                 : oldMap.values();
 
@@ -60,14 +59,31 @@ public with sharing class WorklogTriggerService {
             return;
         }
 
-        for (Project__c project_i : [
-                SELECT Id, (SELECT Id FROM Worklogs__r)
+        List<Project__c> projectList = [
+                SELECT Id, (SELECT Billable_hours__c, Actual_hours__c FROM Worklogs__r)
                 FROM Project__c
                 WHERE Id IN :projectIdSet
-        ]) {
+        ];
 
-        update projectsToUpdate;
+        List<AggregateResult> aggResList = [
+                SELECT Project__c, sum(Billable_hours__c), sum(Actual_hours__c)
+                FROM Worklog__c
+                WHERE Project__c <> NULL
+                GROUP BY Project__c
+        ];
 
-
+        for (AggregateResult ar_i : aggResList) {
+            for (Project__c project_i : projectList) {
+                if (ar_i.get('Project__c') == project_i.Id) {
+                    project_i.Total_Billable_Hours__c = Integer.valueOf(ar_i.get('expr0')); //sum(billiable)
+                    project_i.Total_Actual_Hours__c = Integer.valueOf(ar_i.get('expr1')); //sum(actual)
+                }
+            }
+        }
+        update projectList;
     }
 }
+
+
+
+
