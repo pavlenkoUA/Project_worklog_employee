@@ -75,7 +75,7 @@ public with sharing class WorklogTriggerService {
         for (AggregateResult ar_i : aggResList) {
             for (Project__c project_i : projectList) {
                 if (ar_i.get('Project__c') == project_i.Id) {
-                    project_i.Total_Billable_Hours__c = Integer.valueOf(ar_i.get('expr0')); //sum(billiable)
+                    project_i.Total_Billable_Hours__c = Integer.valueOf(ar_i.get('expr0')); //sum(billiable)?
                     project_i.Total_Actual_Hours__c = Integer.valueOf(ar_i.get('expr1')); //sum(actual)
                 }
             }

@@ -159,17 +159,13 @@ public class WorklogTriggerHandlerTest {
                 Description__c = 'test', Project__c = testProject.Id));
 
         insert testWorklogs;
-        Project__c testProjectWhen = [
-                SELECT Id, Total_Actual_Hours__c, Total_Billable_Hours__c
-                FROM Project__c
-        ];
-        Worklog__c worklogWhen = [
+
+        delete [
                 SELECT Id
                 FROM Worklog__c
                 WHERE Actual_hours__c = 24
                 LIMIT 1
-        ];
-        delete worklogWhen;
+                ];
         //then
 
         Project__c testProjectThen = [
@@ -178,5 +174,51 @@ public class WorklogTriggerHandlerTest {
         ];
         System.assertEquals(12, testProjectThen.Total_Billable_Hours__c);
         System.assertEquals(26, testProjectThen.Total_Actual_Hours__c);
+    }
+
+    @IsTest
+    public static void rollUpTotalHoursToProjectUnDeleteTest() {
+
+        //given
+        Employee__c testEmployee = [SELECT Id FROM Employee__c LIMIT 1];
+        Project__c testProject = [SELECT Id FROM Project__c LIMIT 1];
+        List<Worklog__c> testWorklogs = new List<Worklog__c>();
+
+        //when
+        testWorklogs.add(new Worklog__c(Employee__c = testEmployee.Id, Billable_hours__c = 11, Actual_hours__c = 24,
+                Description__c = 'test', Project__c = testProject.Id));
+        testWorklogs.add(new Worklog__c(Employee__c = testEmployee.Id, Billable_hours__c = 12, Actual_hours__c = 26,
+                Description__c = 'test', Project__c = testProject.Id));
+
+        insert testWorklogs;
+
+        delete [
+                SELECT Id
+                FROM Worklog__c
+                WHERE Actual_hours__c = 24
+                LIMIT 1
+                ];
+
+        Project__c testProjectThenAfterDelete = [
+                SELECT Id, Total_Actual_Hours__c, Total_Billable_Hours__c
+                FROM Project__c
+        ];
+        System.assertEquals(12, testProjectThenAfterDelete.Total_Billable_Hours__c);
+        System.assertEquals(26, testProjectThenAfterDelete.Total_Actual_Hours__c);
+
+        //then
+
+        undelete [
+                SELECT Id
+                FROM Worklog__c
+                WHERE IsDeleted =: true ALL ROWS
+                ];
+
+        Project__c testProjectThen = [
+                SELECT Id, Total_Actual_Hours__c, Total_Billable_Hours__c
+                FROM Project__c
+        ];
+        System.assertEquals(23, testProjectThen.Total_Billable_Hours__c);
+        System.assertEquals(50, testProjectThen.Total_Actual_Hours__c);
     }
 }
