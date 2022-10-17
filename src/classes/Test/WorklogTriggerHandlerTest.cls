@@ -94,28 +94,76 @@ public class WorklogTriggerHandlerTest {
                 Date__c = System.today() - 5, Description__c = 'test'
         );
         insert testWorklog;
+        Profile p = [SELECT Id, Name FROM Profile WHERE Name='Standard User'];
+        User u = new User(Alias = 'standt', Email='john2222222123123123@acme.com',
+                EmailEncodingKey='UTF-8', LastName='Testing', LanguageLocaleKey='en_US',
+                LocaleSidKey='en_US', ProfileId = p.Id,
+                TimeZoneSidKey='America/Los_Angeles',
+                UserName='john2222222123123123@acme.com');
+        insert u;
+
 
         //when & then
         List<Worklog__c> testWorkLogWhen = [SELECT Id, Billable_hours__c, Date__c
                     FROM Worklog__c
-                    WHERE Id =: testEmployee.Id];
+                    WHERE Id =: testWorklog.Id];
 
-        for (Worklog__c worklog_i : testWorkLogWhen){
-            try {
+        System.runAs(u) {
+            for (Worklog__c worklog_i : testWorkLogWhen){
                 worklog_i.Billable_hours__c = 42;
+            }
+            try {
+                update testWorkLogWhen;
             } catch (Exception e) {
-                System.assert(false, 'exception');
+                System.assert(true, 'exception');
                 System.assert(e.getMessage().contains(Label.Prevent_billable_hours_change_on_Worklog_from_the_past));
             }
         }
-        update testWorkLogWhen;
-
         Worklog__c testWorklogThen = [SELECT Id, Billable_hours__c, Date__c
                     FROM Worklog__c
                     WHERE Id =:testWorklog.Id
                     LIMIT 1];
+        System.debug(testWorklog.Billable_hours__c);
         System.assertNotEquals(42, testWorklogThen.Billable_hours__c);
         System.assertEquals(11, testWorklogThen.Billable_hours__c);
+    }
+
+    @IsTest
+    public static void validateBillableHoursToDateAsSysAdminTest() {
+        //given
+        Employee__c testEmployee = [SELECT Id FROM Employee__c LIMIT 1];
+        Worklog__c testWorklog = new Worklog__c(
+                Employee__c = testEmployee.Id, Billable_hours__c = 11,
+                Date__c = System.today() - 5, Description__c = 'test'
+        );
+        insert testWorklog;
+        Profile p = [SELECT Id, Name FROM Profile WHERE Name='System Administrator'];
+        User u = new User(Alias = 'standt', Email='john22222221231231223@acme.com',
+                EmailEncodingKey='UTF-8', LastName='Testing', LanguageLocaleKey='en_US',
+                LocaleSidKey='en_US', ProfileId = p.Id,
+                TimeZoneSidKey='America/Los_Angeles',
+                UserName='john22222221231231223@acme.com');
+        insert u;
+
+
+        //when & then
+        List<Worklog__c> testWorkLogWhen = [SELECT Id, Billable_hours__c, Date__c
+        FROM Worklog__c
+        WHERE Id =: testWorklog.Id];
+
+        System.runAs(u) {
+            for (Worklog__c worklog_i : testWorkLogWhen){
+                worklog_i.Billable_hours__c = 42;
+            }
+            update testWorkLogWhen;
+
+        }
+        Worklog__c testWorklogThen = [SELECT Id, Billable_hours__c, Date__c
+        FROM Worklog__c
+        WHERE Id =:testWorklog.Id
+        LIMIT 1];
+        System.assertNotEquals(11, testWorklogThen.Billable_hours__c);
+        System.assertEquals(42, testWorklogThen.Billable_hours__c);
 
     }
 

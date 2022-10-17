@@ -27,9 +27,14 @@ public with sharing class WorklogTriggerService {
     }
 
     public static void validateBillableHoursToDate(List<Worklog__c> newList) {
-        for (Worklog__c worklog_i : newList) {
-            if (worklog_i.Date__c != Date.today()) {
-                worklog_i.addError(Label.Prevent_billable_hours_change_on_Worklog_from_the_past);
+        String SYS_ADM = 'System Administrator';
+        Id profileId = System.UserInfo.getProfileId();
+
+        if(SYS_ADM != [SELECT Id, Name FROM Profile WHERE Id =:profileId].Name) {
+            for (Worklog__c worklog_i : newList) {
+                if (worklog_i.Date__c != Date.today()) {
+                    worklog_i.addError(Label.Prevent_billable_hours_change_on_Worklog_from_the_past);
+                }
             }
         }
     }
